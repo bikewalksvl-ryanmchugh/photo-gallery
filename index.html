@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <style>
+      body { margin: 0; font-family: sans-serif; background-color: #f5f5f5; }
+      .gallery {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1.5rem;
+        justify-content: center;
+        padding: 1.5rem;
+      }
+      .photo-item {
+        width: 480px;
+        height: 480px;
+        background-color: #fff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+      }
+      img {
+        max-width: 100%;
+        max-height: 100%;
+        object-fit: contain;
+      }
+      #status {
+        text-align: center;
+        padding: 2rem;
+        font-size: 1.2rem;
+        color: #666;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="status">Loading gallery...</div>
+    <div class="gallery" id="gallery"></div>
+
+    <script>
+      (function () {
+        // Visible diagnostic log — appends to the status div so you can see
+        // exactly what's happening without needing DevTools frame selection.
+        var _log = (function () {
+          var status = document.getElementById('status');
+          return function (msg) {
+            var div = document.createElement('div');
+            div.style.fontSize = '0.85rem';
+            div.style.color = '#888';
+            div.style.marginTop = '4px';
+            div.style.fontFamily = 'monospace';
+            div.textContent = '[diag] ' + msg;
+            status.parentNode.insertBefore(div, status.nextSibling);
+          };
+        })();
+
+        _log('page loaded');
+
+        function showStatus(msg) {
+          var status = document.getElementById('status');
+          status.style.display = 'block';
+          status.innerText = msg;
+        }
+
+        // Check that google.script.run exists (it won't if the page is
+        // loaded as a raw file or from a different context).
+        if (typeof google === 'undefined' || !google.script || !google.script.run) {
+          showStatus('Error: google.script.run is not available. '
+            + 'This page must be opened via the deployed web app URL '
+            + '(script.google.com/macros/s/.../exec), not the editor preview.');
+          return;
+        }
+
+        _log('google.script.run exists, calling getPhotos...');
+
+        var called = false;
+        google.script.run
+          .withSuccessHandler(function(photos) {
+            _log('SUCCESS: got ' + photos.length + ' photos');
+            called = true;
+            var gallery = document.getElementById('gallery');
+            var status = document.getElementById('status');
+            status.style.display = 'none';
+
+            if (!photos || photos.length === 0) {
+              status.style.display = 'block';
+              status.innerText = 'No images found in the folder.';
+              return;
+            }
+
+            photos.forEach(function(photo) {
+              var item = document.createElement('div');
+              item.className = 'photo-item';
+
+              var img = document.createElement('img');
+              img.src = 'https://drive.google.com/uc?export=download&id=' + photo.id;
+
+              item.appendChild(img);
+              gallery.appendChild(item);
+            });
+          })
+          .withFailureHandler(function(err) {
+            _log('FAILURE: ' + (err && err.message ? err.message : err));
+            called = true;
+            showStatus('Error loading gallery: ' + (err && err.message ? err.message : err));
+          })
+          .getPhotos();
+
+        // Timeout: if neither success nor failure fires after 15 seconds,
+        // show a visible warning on the page.
+        setTimeout(function () {
+          if (!called) {
+            _log('TIMEOUT after 15s — the server-side call never returned.');
+            showStatus('Timeout: getPhotos() did not return within 15 seconds. '
+              + 'Check that the Apps Script project has Drive API access '
+              + 'and the folder ID is correct.');
+          }
+        }, 15000);
+      })();
+    </script>
+  </body>
+</html>
