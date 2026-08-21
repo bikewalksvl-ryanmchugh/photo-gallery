@@ -3,21 +3,25 @@
   <head>
     <style>
       body { margin: 0; font-family: sans-serif; background-color: #f5f5f5; }
-      .gallery {
+      #lightgallery {
         display: flex;
         flex-wrap: wrap;
         gap: 1.5rem;
         justify-content: center;
-        padding: 1.5rem;
+        padding: 1rem;
+        max-width: 1400px;
+        margin: 0 auto;
       }
-      .photo-item {
-        width: 480px;
-        height: 480px;
+      #lightgallery .photo-item {
+        width: 240px;
+        height: 240px;
         background-color: #fff;
         display: flex;
         align-items: center;
         justify-content: center;
         box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        border-radius: 8px;
+        overflow: hidden;
       }
       img {
         max-width: 100%;
@@ -31,10 +35,13 @@
         color: #666;
       }
     </style>
+    <head>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/lightgallery/2.9.0/css/lightgallery-bundle.min.css" />
   </head>
   <body>
     <div id="status">Loading gallery...</div>
-    <div class="gallery" id="gallery"></div>
+    <div id="lightgallery">
+    </div>
 
     <script>
       (function () {
@@ -77,7 +84,7 @@
           .withSuccessHandler(function(photos) {
             _log('SUCCESS: got ' + photos.length + ' photos');
             called = true;
-            var gallery = document.getElementById('gallery');
+            var gallery = document.getElementById('lightgallery');
             var status = document.getElementById('status');
             status.style.display = 'none';
 
@@ -87,16 +94,58 @@
               return;
             }
 
+            // First loop (commented out)
+            /*
             photos.forEach(function(photo) {
               var item = document.createElement('div');
               item.className = 'photo-item';
 
               var img = document.createElement('img');
-              img.src = 'https://drive.google.com/uc?export=download&id=' + photo.id;
+              img.src = photo.dataUri;
+              img.loading = 'lazy';
 
               item.appendChild(img);
               gallery.appendChild(item);
             });
+            */
+
+            photos.forEach((photo) => {
+              var item = document.createElement('div');
+              item.className = 'photo-item';
+
+              var anchor = document.createElement('a');
+              anchor.href = photo.thumbnailUrl;
+              anchor.setAttribute('data-src', photo.thumbnailUrl);
+              anchor.setAttribute('data-size', '1920x1080');
+              anchor.setAttribute('data-sub-html', photo.name);
+              anchor.classList.add('lg-item');
+
+              var img = document.createElement('img');
+              img.src = photo.thumbnailUrl;
+              img.loading = 'lazy';
+              img.alt = photo.name;
+              img.title = photo.name;
+              img.setAttribute('data-src', photo.thumbnailUrl)
+
+              anchor.appendChild(img);
+              item.appendChild(anchor);
+
+              let gallery = document.getElementById("lightgallery");
+              gallery.appendChild(item);
+            });
+
+            // Initialize lightgallery after elements are added to DOM
+            setTimeout(function() {
+              lightGallery(gallery, {
+                selector: 'a',
+                plugins: [lgZoom, lgThumbnail],
+                forceImageType: true,
+                licenseKey: 'none',
+                speed: 500,
+                thumbnail: true,
+                zoom: true
+              });
+            }, 200);
           })
           .withFailureHandler(function(err) {
             _log('FAILURE: ' + (err && err.message ? err.message : err));
@@ -104,18 +153,10 @@
             showStatus('Error loading gallery: ' + (err && err.message ? err.message : err));
           })
           .getPhotos();
-
-        // Timeout: if neither success nor failure fires after 15 seconds,
-        // show a visible warning on the page.
-        setTimeout(function () {
-          if (!called) {
-            _log('TIMEOUT after 15s — the server-side call never returned.');
-            showStatus('Timeout: getPhotos() did not return within 15 seconds. '
-              + 'Check that the Apps Script project has Drive API access '
-              + 'and the folder ID is correct.');
-          }
-        }, 15000);
       })();
     </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/lightgallery/2.9.0/lightgallery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/lightgallery/2.9.0/plugins/thumbnail/lg-thumbnail.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/lightgallery/2.9.0/plugins/zoom/lg-zoom.min.js"></script>
   </body>
 </html>
