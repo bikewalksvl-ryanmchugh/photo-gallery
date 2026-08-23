@@ -2,14 +2,25 @@
 <html>
   <head>
     <style>
-      body { margin: 0; font-family: sans-serif; background-color: #f5f5f5; }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        font-family: sans-serif;
+        background-color: #f5f5f5;
+      }
+      #loading {
+        text-align: center;
+        padding: 3rem;
+        font-size: 1.2rem;
+        color: #666;
+      }
       #lightgallery {
         display: flex;
         flex-wrap: wrap;
-        gap: 1.5rem;
+        gap: 1rem;
         justify-content: center;
         padding: 1rem;
-        max-width: 1400px;
+        max-width: 1600px;
         margin: 0 auto;
       }
       #lightgallery .photo-item {
@@ -19,97 +30,65 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        box-shadow: 0 2px 8px rgba(0,0,0,0.12);
         border-radius: 8px;
         overflow: hidden;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+        cursor: pointer;
       }
-      img {
-        max-width: 100%;
-        max-height: 100%;
-        object-fit: contain;
+      #lightgallery .photo-item:hover {
+        transform: scale(1.03);
+        box-shadow: 0 4px 16px rgba(0,0,0,0.18);
       }
-      #status {
-        text-align: center;
-        padding: 2rem;
-        font-size: 1.2rem;
-        color: #666;
+      #lightgallery .photo-item img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+
+      /* Responsive breakpoints */
+      @media (max-width: 1600px) {
+        #lightgallery .photo-item { width: 200px; height: 200px; }
+      }
+      @media (max-width: 1200px) {
+        #lightgallery .photo-item { width: 160px; height: 160px; }
+      }
+      @media (max-width: 800px) {
+        #lightgallery .photo-item { width: 120px; height: 120px; gap: 0.5rem; }
+        #lightgallery { padding: 0.5rem; gap: 0.5rem; }
+      }
+      @media (max-width: 480px) {
+        #lightgallery .photo-item { width: calc(50% - 1rem); height: calc(50% - 1rem); max-height: 200px; }
       }
     </style>
     <head>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/lightgallery/2.9.0/css/lightgallery-bundle.min.css" />
   </head>
   <body>
-    <div id="status">Loading gallery...</div>
-    <div id="lightgallery">
-    </div>
+    <div id="loading">Loading gallery...</div>
+    <div id="lightgallery"></div>
 
     <script>
       (function () {
-        // Visible diagnostic log — appends to the status div so you can see
-        // exactly what's happening without needing DevTools frame selection.
-        var _log = (function () {
-          var status = document.getElementById('status');
-          return function (msg) {
-            var div = document.createElement('div');
-            div.style.fontSize = '0.85rem';
-            div.style.color = '#888';
-            div.style.marginTop = '4px';
-            div.style.fontFamily = 'monospace';
-            div.textContent = '[diag] ' + msg;
-            status.parentNode.insertBefore(div, status.nextSibling);
-          };
-        })();
+        var loading = document.getElementById('loading');
+        var gallery = document.getElementById('lightgallery');
 
-        _log('page loaded');
-
-        function showStatus(msg) {
-          var status = document.getElementById('status');
-          status.style.display = 'block';
-          status.innerText = msg;
-        }
-
-        // Check that google.script.run exists (it won't if the page is
-        // loaded as a raw file or from a different context).
         if (typeof google === 'undefined' || !google.script || !google.script.run) {
-          showStatus('Error: google.script.run is not available. '
-            + 'This page must be opened via the deployed web app URL '
-            + '(script.google.com/macros/s/.../exec), not the editor preview.');
+          loading.innerText = 'Error: This page must be opened via the deployed web app URL.';
           return;
         }
 
-        _log('google.script.run exists, calling getPhotos...');
-
-        var called = false;
         google.script.run
           .withSuccessHandler(function(photos) {
-            _log('SUCCESS: got ' + photos.length + ' photos');
-            called = true;
-            var gallery = document.getElementById('lightgallery');
-            var status = document.getElementById('status');
-            status.style.display = 'none';
+            loading.style.display = 'none';
 
             if (!photos || photos.length === 0) {
-              status.style.display = 'block';
-              status.innerText = 'No images found in the folder.';
+              loading.style.display = 'block';
+              loading.innerText = 'No images found in the folder.';
               return;
             }
 
-            // First loop (commented out)
-            /*
             photos.forEach(function(photo) {
-              var item = document.createElement('div');
-              item.className = 'photo-item';
-
-              var img = document.createElement('img');
-              img.src = photo.dataUri;
-              img.loading = 'lazy';
-
-              item.appendChild(img);
-              gallery.appendChild(item);
-            });
-            */
-
-            photos.forEach((photo) => {
               var item = document.createElement('div');
               item.className = 'photo-item';
 
@@ -125,12 +104,9 @@
               img.loading = 'lazy';
               img.alt = photo.name;
               img.title = photo.name;
-              img.setAttribute('data-src', photo.thumbnailUrl)
 
               anchor.appendChild(img);
               item.appendChild(anchor);
-
-              let gallery = document.getElementById("lightgallery");
               gallery.appendChild(item);
             });
 
@@ -148,9 +124,8 @@
             }, 200);
           })
           .withFailureHandler(function(err) {
-            _log('FAILURE: ' + (err && err.message ? err.message : err));
-            called = true;
-            showStatus('Error loading gallery: ' + (err && err.message ? err.message : err));
+            loading.style.display = 'block';
+            loading.innerText = 'Error loading gallery: ' + (err && err.message ? err.message : err);
           })
           .getPhotos();
       })();

@@ -1,4 +1,4 @@
-const FOLDER_ID = "1ZdSy1QsA0P0vNXw__-23gZXFAXrTm6Ck";
+const FOLDER_ID = "1oVkmHmvvzWhZc6h6ew0gq1-bPLl-rttC";
 
 function doGet(e) {
   // Proxy endpoint for serving images
