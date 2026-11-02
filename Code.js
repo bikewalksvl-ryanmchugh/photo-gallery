@@ -58,6 +58,23 @@ function shareFolderPublicly() {
   return "Folder and " + count + " images shared publicly";
 }
 
+function parseTags(description) {
+  if (!description) return [];
+  const seen = {};
+  return description
+    .split(/[,;|\n]/)
+    .map(function (tag) {
+      return tag.trim().replace(/^#/, "").trim();
+    })
+    .filter(function (tag) {
+      if (!tag) return false;
+      const key = tag.toLowerCase();
+      if (seen[key]) return false;
+      seen[key] = true;
+      return true;
+    });
+}
+
 function getPhotos() {
   Logger.log("Entering getPhotos");
   ensureFolderAccess();
@@ -84,6 +101,22 @@ function getPhotos() {
       // Direct link to view/download the file
       const viewUrl = "https://drive.google.com/file/d/" + fileId + "/view";
 
+      // Date the file was created in Drive — used for sorting + year filtering
+      let createdAt = null;
+      try {
+        createdAt = file.getDateCreated().toISOString();
+      } catch (err) {
+        Logger.log("Could not read date for " + file.getName() + ": " + err.message);
+      }
+
+      // Description doubles as a tag list, e.g. "wedding, portrait, 2026"
+      let description = "";
+      try {
+        description = file.getDescription() || "";
+      } catch (err) {
+        Logger.log("Could not read description for " + file.getName() + ": " + err.message);
+      }
+
       photos.push({
         id: fileId,
         thumbnailUrl: thumbnailUrl,
@@ -91,9 +124,19 @@ function getPhotos() {
         viewUrl: viewUrl,
         name: file.getName(),
         mimeType: mimeType,
+        createdAt: createdAt,
+        description: description,
+        tags: parseTags(description),
       });
     }
   }
+
+  // Newest to oldest; undated photos go last.
+  photos.sort(function (a, b) {
+    const aTime = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+    const bTime = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+    return bTime - aTime;
+  });
 
   Logger.log("Found " + photos.length + " photos");
   return photos;
